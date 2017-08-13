@@ -2,90 +2,49 @@
 
 const express = require('express');
 const bodyParser = require('body-parser');
+var Crawler = require("node-webcrawler");
+var url = require('url');
+var fs = require('fs');
 
 
 const restService = express();
 restService.use(bodyParser.json());
 
-restService.post('/webhook', function (req, res) {
+restService.get('/map', function (req, res) {
 
     console.log('hook request');
+    var result = '';
 
     try {
-        var speech = 'empty speech';
-        var messages = [];
-        
-        
-        if (req.body) {
-            var requestBody = req.body;
-
-            if (requestBody.result) {
-                speech = '';
-
-               /* if (requestBody.result.fulfillment) {
-                    speech += requestBody.result.fulfillment.speech;
-                    speech += ' awesome hook ';	
+        var depth = 3;
+        var c = new Crawler({
+            maxConnections : 10,
+            // This will be called for each crawled page 
+            callback : function (error, result, $) {
+                // $ is Cheerio by default 
+                //a lean implementation of core jQuery designed specifically for the server 
+                if(error){
+                    console.log(error);
+                }else{
+                    console.log($("title").text());
+                    var links = $('a'); //jquery get all hyperlinks
+                    $(links).each(function(i, link){
+                        var item = $(link).text() + '  :  ' + $(link).attr('href');
+                        console.log($(link).text());
+                        fs.appendFile('helloworld.txt', item, function (err) {
+                            if (err) {
+                                return console.log(err);
+                            }
+                        });
+                    });
                 }
-
-                if (requestBody.result.action) {
-                    speech += 'action: ' + requestBody.result.action;	
-                }*/
-                
-                if(requestBody.result.action === 'projectData') { 
-                    if (requestBody.result.parameters.i1project === 'Intraday') {
-                    if(requestBody.result.parameters.i1ProjectArtifact === 'Quickbase') { 
-                        speech += 'Here are the Quickbase projects for ' + requestBody.result.parameters.i1project;
-                        messages.push({ "type": 0,"platform":"skype","speech": speech});
-                        messages.push({ "type": 0,"platform":"skype","speech": 'QB111111 Intraday description'});
-                        messages.push({ "type": 0,"platform":"skype","speech": 'QB111112 Intraday description'});
-                        speech += 'QB111111 Intraday description and QB111112 Intraday description';
-                        messages.push({ "type": 0,"platform":"default","speech": speech});
-                    } else if(requestBody.result.parameters.i1ProjectArtifact === 'Documentation') { 
-                        speech += 'Here is the documentation I found on ' + requestBody.result.parameters.i1project + '. Hope this helps.';
-                        messages.push({ "type": 0, "platform": "skype","speech": speech});
-                        messages.push({ "type": 0, "platform": "skype","speech": 'QB111111 Intraday description 1'});
-                        messages.push({ "type": 0, "platform": "skype","speech": 'QB111112 Intraday description 2'});
-                        speech += 'Intraday description 1 and Intraday description 2';
-                        messages.push({ "type": 0,"platform":"default","speech": speech});
-                    } else if(requestBody.result.parameters.i1ProjectArtifact === 'SME') { 
-                        speech += 'SME for ' + requestBody.result.parameters.i1project + ' projects are';
-                        messages.push({ "type": 0,"platform": "skype","speech": speech});
-                        messages.push({ "type": 0,"platform": "skype","speech": 'Jayant (9999)'});
-                        messages.push({ "type": 0,"platform": "skype","speech": 'Gaurav (9999)'});
-                        messages.push({ "type": 0,"platform": "skype","speech": 'Niranjan (9999)'});
-                        messages.push({ "type": 0,"platform": "skype","speech": 'These guys will help you'});
-                        speech += 'Jayant (9999) Gaurav (9999) Niranjan (9999). These guys will help you.';
-                        messages.push({ "type": 0,"platform":"default","speech": speech});
-                    } else { 
-                       messages.push({ "type": 0,"platform":"skype","speech": 'Sorry I can not help you with this but I guess Jayant can. you should get in touch'});   
-                       speech += 'Sorry I can not help you with this but I guess Jayant can. you should get in touch';
-                       messages.push({ "type": 0,"platform":"default","speech": speech}); 
-                    }
-                    }
-                }
-                
-                if(requestBody.result.action === 'Buddy') {
-                    console.log(requestBody);
-                    
-                    if(requestBody.result.parameters.Extension === 'Jayant') {
-                        speech = 'Jayant\'s extension is 7887';
-                        messages.push({ "type": 0, "platform": "skype","speech": speech});
-                        //messages.push({ "type": 0,"speech": speech});
-                    }  else {
-                        speech = 'Sorry, could not find extension for ' + requestBody.result.parameters.Extension;
-                        messages.push({ "type": 0, "platform": "skype","speech": speech});
-                        //messages.push({ "type": 0,"speech": speech});
-                    }
-                }        
             }
-        }
+        });
 
-        console.log('result: ', speech);
+        c.queue('https://en.wikipedia.org/wiki/Software_engineering');
 
         return res.json({
-            speech: speech,
-            "messages": messages,    
-            source: 'apiai-webhook-sample'
+            result: 'Completed \n' + result
         });
     } catch (err) {
         console.error("Can't process request", err);
